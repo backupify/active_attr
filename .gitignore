@@ -6,3 +6,5 @@ doc
 Gemfile.lock
 gemfiles/*.gemfile.lock
 pkg/*
+.idea/
+atlassian-ide-plugin.xml
