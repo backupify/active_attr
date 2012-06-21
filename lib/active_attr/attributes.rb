@@ -243,7 +243,14 @@ module ActiveAttr
       # Overrides ActiveModel::AttributeMethods
       # Pulled up to allow clobbering existing methods
       # @private
-      def define_attribute_method(attr_name, options)
+      def define_attribute_methods(attr_names, options={})
+        attr_names.each { |attr_name| define_attribute_method(attr_name, options) }
+      end
+
+      # Overrides ActiveModel::AttributeMethods
+      # Pulled up to allow clobbering existing methods
+      # @private
+      def define_attribute_method(attr_name, options={})
         attribute_method_matchers.each do |matcher|
           method_name = matcher.method_name(attr_name)
 
