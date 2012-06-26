@@ -7,6 +7,7 @@ require "active_attr/typecasting/float_typecaster"
 require "active_attr/typecasting/integer_typecaster"
 require "active_attr/typecasting/object_typecaster"
 require "active_attr/typecasting/string_typecaster"
+require "active_attr/typecasting/array_typecaster"
 require "active_attr/typecasting/unknown_typecaster_error"
 
 module ActiveAttr
@@ -21,6 +22,7 @@ module ActiveAttr
   # * Integer
   # * Object
   # * String
+  # * Array
   #
   # @since 0.5.0
   module Typecasting
@@ -56,6 +58,7 @@ module ActiveAttr
         Integer    => IntegerTypecaster,
         Object     => ObjectTypecaster,
         String     => StringTypecaster,
+        Array      => ArrayTypecaster
       }[type]
 
       typecaster.new if typecaster
