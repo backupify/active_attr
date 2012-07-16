@@ -59,6 +59,10 @@ module ActiveAttr
       it "returns ObjectTypecaster for Object" do
         model.typecaster_for(Object).should be_a_kind_of Typecasting::ObjectTypecaster
       end
+
+      it "returns HashTypecaster for Hash" do
+        model.typecaster_for(Hash).should be_a_kind_of Typecasting::HashTypecaster
+      end
     end
   end
 end

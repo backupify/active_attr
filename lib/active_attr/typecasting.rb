@@ -58,7 +58,8 @@ module ActiveAttr
         Integer    => IntegerTypecaster,
         Object     => ObjectTypecaster,
         String     => StringTypecaster,
-        Array      => ArrayTypecaster
+        Array      => ArrayTypecaster,
+        Hash       => HashTypecaster
       }[type]
 
       typecaster.new if typecaster
