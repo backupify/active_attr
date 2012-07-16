@@ -2,10 +2,7 @@ require 'json'
 
 module ActiveAttr
   module Typecasting
-    # Typecasts an Object to a Hash. If input is a string, attempts to parse it as JSON.
-    #
-    # @example Usage
-    #   ArrayTypecaster.new.call(1) #=> [1]
+    # Typecasts an Object to a Hash
     #
     # @since 0.6.1
     class HashTypecaster
