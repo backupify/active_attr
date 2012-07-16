@@ -8,6 +8,7 @@ require "active_attr/typecasting/integer_typecaster"
 require "active_attr/typecasting/object_typecaster"
 require "active_attr/typecasting/string_typecaster"
 require "active_attr/typecasting/array_typecaster"
+require "active_attr/typecasting/hash_typecaster"
 require "active_attr/typecasting/unknown_typecaster_error"
 
 module ActiveAttr
