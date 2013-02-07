@@ -10,3 +10,4 @@ pkg/*
 .idea/
 atlassian-ide-plugin.xml
 tmp/
+.swp

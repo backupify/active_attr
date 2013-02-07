@@ -201,26 +201,9 @@ module ActiveAttr
           attribute_name = attribute_definition.name.to_s
           # Force active model to generate attribute methods
           remove_instance_variable("@attribute_methods_generated") if instance_variable_defined?("@attribute_methods_generated")
-          define_attribute_methods([attribute_definition.name], options) unless attribute_names.include? attribute_name
+          define_attribute_methods([attribute_definition.name]) unless attribute_names.include? attribute_name
           attributes[attribute_name] = attribute_definition
         end
-      end
-
-      # Defines an attribute, overriding any existing methods with name conflicts
-      #
-      # For each attribute that is defined, a getter and setter will be
-      # added as an instance method to the model, potentially overriding any methods
-      # which would cause the attribute method to raise DangerousAttributeError.
-      # An AttributeDefinitioninstance will be added to result of the attributes class method.
-      #
-      # @example Define an attribute.
-      #   attribute! :to_s
-      #
-      # @param (see AttributeDefinition#initialize)
-      #
-      # @since 0.5.0
-      def attribute!(name, options={})
-        attribute(name, options.merge(:clobber => true))
       end
 
       # Returns an Array of attribute names as Strings
