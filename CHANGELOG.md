@@ -1,6 +1,19 @@
-# ActiveAttr 0.6.0 (unreleased) #
+# ActiveAttr 0.7.1 (Unreleased) #
+
+* HaveAttributeMatcher failure messages now use an expected/got format
+
+# ActiveAttr 0.7.0 (December 15, 2012) #
+
+* Added Serialization
+* Changed Typecasting::DateTypecaster to not raise on invalid Strings
+* #114 Fixed NoMethodError in TypecastedAttributes#attribute_before_type_cast
+
+# ActiveAttr 0.6.0 (June 27, 2012) #
 
 * Added AttributeDefinition#inspect
+* Added Attributes.attribute!
+* Added Attributes.dangerous_attribute?
+* Added missing autoload for BlockInitialization
 * Added Typecasting#typecaster_for
 * Added Typecasting::UnknownTypecasterError
 * Changed Typecasting#typecast_attribute to take a typecaster, not a type

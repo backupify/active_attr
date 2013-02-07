@@ -57,7 +57,7 @@ module ActiveAttr
     #
     # @since 0.2.0
     def attributes
-      Hash[self.class.attribute_names.map { |key| [key, send(key)] }]
+      attributes_map { |name| send name }
     end
 
     # Returns the class name plus its attributes
@@ -120,14 +120,6 @@ module ActiveAttr
     end
     alias_method :[]=, :write_attribute
 
-    protected
-
-    # Overrides ActiveModel::AttributeMethods
-    # @private
-    def attribute_method?(attr_name)
-      self.class.attribute_names.include? attr_name.to_s
-    end
-
     private
 
     # Read an attribute from the attributes hash
@@ -146,12 +138,28 @@ module ActiveAttr
       @attributes[name] = value
     end
 
+    # Maps all attributes using the given block
+    #
+    # @example Stringify attributes
+    #   person.attributes_map { |name| send(name).to_s }
+    #
+    # @yield [name] block called to return hash value
+    # @yieldparam [String] name The name of the attribute to map.
+    #
+    # @return [Hash{String => Object}] The Hash of mapped attributes
+    #
+    # @since 0.7.0
+    def attributes_map
+      Hash[ self.class.attribute_names.map { |name| [name, yield(name)] } ]
+    end
+
     module ClassMethods
       # Defines an attribute
       #
       # For each attribute that is defined, a getter and setter will be
-      # added as an instance method to the model. An AttributeDefinition
-      # instance will be added to result of the attributes class method.
+      # added as an instance method to the model. An
+      # {AttributeDefinition} instance will be added to result of the
+      # attributes class method.
       #
       # @example Define an attribute.
       #   attribute :name
@@ -161,8 +169,34 @@ module ActiveAttr
       # @raise [DangerousAttributeError] if the attribute name conflicts with
       #   existing methods
       #
+      # @return [AttributeDefinition] Attribute's definition
+      #
       # @since 0.2.0
       def attribute(name, options={})
+        if dangerous_attribute_method_name = dangerous_attribute?(name)
+          raise DangerousAttributeError, %{an attribute method named "#{dangerous_attribute_method_name}" would conflict with an existing method}
+        else
+          attribute! name, options
+        end
+      end
+
+      # Defines an attribute without checking for conflicts
+      #
+      # Allows you to define an attribute whose methods will conflict
+      # with an existing method. For example, Ruby's Timeout library
+      # adds a timeout method to Object. Attempting to define a timeout
+      # attribute using .attribute will raise a
+      # {DangerousAttributeError}, but .attribute! will not.
+      #
+      # @example Define a dangerous attribute.
+      #   attribute! :timeout
+      #
+      # @param (see AttributeDefinition#initialize)
+      #
+      # @return [AttributeDefinition] Attribute's definition
+      #
+      # @since 0.6.0
+      def attribute!(name, options={})
         AttributeDefinition.new(name, options).tap do |attribute_definition|
           attribute_name = attribute_definition.name.to_s
           # Force active model to generate attribute methods
@@ -214,6 +248,30 @@ module ActiveAttr
         @attributes ||= ActiveSupport::HashWithIndifferentAccess.new
       end
 
+      # Determine if a given attribute name is dangerous
+      #
+      # Some attribute names can cause conflicts with existing methods
+      # on an object. For example, an attribute named "timeout" would
+      # conflict with the timeout method that Ruby's Timeout library
+      # mixes into Object.
+      #
+      # @example Testing a harmless attribute
+      #   Person.dangerous_attribute? :name #=> false
+      #
+      # @example Testing a dangerous attribute
+      #   Person.dangerous_attribute? :nil #=> "nil?"
+      #
+      # @param name Attribute name
+      #
+      # @return [false, String] False or the conflicting method name
+      #
+      # @since 0.6.0
+      def dangerous_attribute?(name)
+        attribute_methods(name).detect do |method_name|
+          !DEPRECATED_OBJECT_METHODS.include?(method_name.to_s) && allocate.respond_to?(method_name, true)
+        end unless attribute_names.include? name.to_s
+      end
+
       # Returns the class name plus its attribute names
       #
       # @example Inspect the model's definition.
@@ -225,7 +283,7 @@ module ActiveAttr
       def inspect
         inspected_attributes = attribute_names.sort
         attributes_list = "(#{inspected_attributes.join(", ")})" unless inspected_attributes.empty?
-        "#{self.name}#{attributes_list}"
+        "#{name}#{attributes_list}"
       end
 
       protected
@@ -240,43 +298,19 @@ module ActiveAttr
         @attributes = attributes
       end
 
-      # Overrides ActiveModel::AttributeMethods
-      # Pulled up to allow clobbering existing methods
-      # @private
-      def define_attribute_methods(attr_names, options={})
-        attr_names.each { |attr_name| define_attribute_method(attr_name, options) }
-      end
-
-      # Overrides ActiveModel::AttributeMethods
-      # Pulled up to allow clobbering existing methods
-      # @private
-      def define_attribute_method(attr_name, options={})
-        attribute_method_matchers.each do |matcher|
-          method_name = matcher.method_name(attr_name)
-
-          if options[:clobber] || ! instance_method_already_implemented?(method_name)
-            generate_method = "define_method_#{matcher.method_missing_target}"
-
-            if respond_to?(generate_method)
-              send(generate_method, attr_name)
-            else
-              define_optimized_call generated_attribute_methods, method_name, matcher.method_missing_target, attr_name.to_s
-            end
-          end
-        end
-        attribute_method_matchers_cache.clear
-      end
-
-      # Overrides ActiveModel::AttributeMethods
-      # @private
+      # Overrides ActiveModel::AttributeMethods to backport 3.2 fix
       def instance_method_already_implemented?(method_name)
-        deprecated_object_method = DEPRECATED_OBJECT_METHODS.include?(method_name.to_s)
-        already_implemented = !deprecated_object_method && self.allocate.respond_to?(method_name, true)
-        raise DangerousAttributeError, %{an attribute method named "#{method_name}" would conflict with an existing method} if already_implemented
-        false
+        generated_attribute_methods.method_defined?(method_name)
       end
 
       private
+
+      # Expand an attribute name into its generated methods names
+      #
+      # @since 0.6.0
+      def attribute_methods(name)
+        attribute_method_matchers.map { |matcher| matcher.method_name name }
+      end
 
       # Ruby inherited hook to assign superclass attributes to subclasses
       #

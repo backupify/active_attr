@@ -23,10 +23,10 @@ module ActiveAttr
         end
       end
 
-      subject { model_class.new }
+      subject(:model) { model_class.new }
 
       it "correctly defines methods for the attributes instead of relying on method_missing" do
-        subject.id.should be_nil
+        model.id.should be_nil
       end
     end
 
@@ -95,7 +95,7 @@ module ActiveAttr
     context "serializing a model" do
       let(:first_name) { "Chris" }
 
-      let :instance do
+      let :model do
         model_class.new.tap do |model|
           model.first_name = first_name
         end
@@ -113,6 +113,7 @@ module ActiveAttr
             include ActiveModel::Serializers::Xml
           end
 
+          self.include_root_in_json = true
           attribute :first_name
           attribute :last_name
 
@@ -128,34 +129,34 @@ module ActiveAttr
         end
 
         it "includes unassigned, defined attributes" do
-          subject.keys.should include("last_name")
-          subject["last_name"].should be_nil
+          serialized_model.keys.should include("last_name")
+          serialized_model["last_name"].should be_nil
         end
       end
 
       describe "#as_json" do
-        subject { instance.as_json["person"] }
+        subject(:serialized_model) { model.as_json["person"] }
         include_examples "serialization method"
       end
 
       describe "#serializable_hash" do
-        subject { instance.serializable_hash }
+        subject(:serialized_model) { model.serializable_hash }
         include_examples "serialization method"
       end
 
       describe "#to_json" do
-        subject { ActiveSupport::JSON.decode(instance.to_json)["person"] }
+        subject(:serialized_model) { ActiveSupport::JSON.decode(model.to_json)["person"] }
         include_examples "serialization method"
       end
 
       describe "#to_xml" do
-        subject { Hash.from_xml(instance.to_xml)["person"] }
+        subject(:serialized_model) { Hash.from_trusted_xml(model.to_xml)["person"] }
         include_examples "serialization method"
       end
     end
 
     context "building with FactoryGirl" do
-      subject { FactoryGirl.build(:person) }
+      subject(:model) { FactoryGirl.build(:person) }
 
       before do
         Object.const_set("Person", model_class)
@@ -186,47 +187,92 @@ module ActiveAttr
       end
 
       it "sets the attributes" do
-        subject.first_name.should eq "Chris"
-        subject.last_name.should == "Griego"
+        model.first_name.should eq "Chris"
+        model.last_name.should == "Griego"
       end
     end
 
     context "defining dangerous attributes" do
-      shared_examples "defining a dangerous attribute" do
-        it "defining an attribute that conflicts with #{described_class} raises DangerousAttributeError" do
-          expect { model_class.attribute(:write_attribute) }.to raise_error DangerousAttributeError, %{an attribute method named "write_attribute" would conflict with an existing method}
+      shared_examples "a dangerous attribute" do
+        it ".dangerous_attribute? is true" do
+          model_class.dangerous_attribute?(attribute_name).should be_true
         end
 
-        it "defining an attribute that conflicts with ActiveModel::AttributeMethods raises DangerousAttributeError" do
-          expect { model_class.attribute(:inspect) }.to raise_error DangerousAttributeError, %{an attribute method named "inspect" would conflict with an existing method}
+        it ".attribute raises DangerousAttributeError" do
+          expect { model_class.attribute(attribute_name) }.to raise_error DangerousAttributeError, %{an attribute method named "#{attribute_name}" would conflict with an existing method}
         end
 
-        it "defining an :id attribute does not raise" do
-          expect { model_class.attribute(:id) }.not_to raise_error
+        it ".attribute! does not raise" do
+          expect { model_class.attribute!(attribute_name) }.not_to raise_error
+        end
+      end
+
+      shared_examples "a whitelisted attribute" do
+        it ".dangerous_attribute? is false" do
+          model_class.dangerous_attribute?(attribute_name).should be_false
         end
 
-        it "defining a :type attribute does not raise" do
-          expect { model_class.attribute(:type) }.not_to raise_error
+        it ".attribute does not raise" do
+          expect { model_class.attribute(attribute_name) }.not_to raise_error
         end
 
-        it "defining an attribute that conflicts with Kernel raises DangerousAttributeError" do
-          expect { model_class.attribute(:puts) }.to raise_error DangerousAttributeError
+        it ".attribute! does not raise" do
+          expect { model_class.attribute!(attribute_name) }.not_to raise_error
         end
 
-        it "defining an attribute that conflicts with Object raises DangerousAttributeError" do
-          expect { model_class.attribute(:class) }.to raise_error DangerousAttributeError
+        it "can be set and get" do
+          model_class.attribute attribute_name
+          model = model_class.new
+          value = mock
+          model.send "#{attribute_name}=", value
+          model.send(attribute_name).should equal value
+        end
+      end
+
+      shared_examples "defining dangerous attributes" do
+        context "an attribute that conflicts with #{described_class}" do
+          let(:attribute_name) { :write_attribute }
+          include_examples "a dangerous attribute"
         end
 
-        it "defining an attribute that conflicts with BasicObject raises DangerousAttributeError" do
-          expect { model_class.attribute(:instance_eval) }.to raise_error DangerousAttributeError
+        context "an attribute that conflicts with ActiveModel::AttributeMethods" do
+          let(:attribute_name) { :inspect }
+          include_examples "a dangerous attribute"
         end
 
-        it "defining an attribute that conflicts with a properly implemented method_missing callback raises DangerousAttributeError" do
-          expect { model_class.attribute(:my_proper_missing_method) }.to raise_error DangerousAttributeError
+        context "an attribute that conflicts with Kernel" do
+          let(:attribute_name) { :puts }
+          include_examples "a dangerous attribute"
         end
 
-        it "defining an attribute that conflicts with a less properly implemented method_missing callback raises DangerousAttributeError" do
-          expect { model_class.attribute(:my_less_proper_missing_method) }.to raise_error DangerousAttributeError
+        context "an attribute that conflicts with Object" do
+          let(:attribute_name) { :class }
+          include_examples "a dangerous attribute"
+        end
+
+        context "an attribute that conflicts with BasicObject" do
+          let(:attribute_name) { :instance_eval }
+          include_examples "a dangerous attribute"
+        end
+
+        context "an attribute that conflicts with a properly implemented method_missing callback" do
+          let(:attribute_name) { :my_proper_missing_method }
+          include_examples "a dangerous attribute"
+        end
+
+        context "an attribute that conflicts with a less properly implemented method_missing callback" do
+          let(:attribute_name) { :my_less_proper_missing_method }
+          include_examples "a dangerous attribute"
+        end
+
+        context "an :id attribute" do
+          let(:attribute_name) { :id }
+          include_examples "a whitelisted attribute"
+        end
+
+        context "a :type attribute" do
+          let(:attribute_name) { :type }
+          include_examples "a whitelisted attribute"
         end
 
         context "and specifying :clobber" do
@@ -268,12 +314,12 @@ module ActiveAttr
 
       context "on a model class" do
         let(:model_class) { dangerous_model_class }
-        include_examples "defining a dangerous attribute"
+        include_examples "defining dangerous attributes"
       end
 
       context "on a child class" do
         let(:model_class) { Class.new(dangerous_model_class) }
-        include_examples "defining a dangerous attribute"
+        include_examples "defining dangerous attributes"
       end
     end
   end
