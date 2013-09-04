@@ -24,6 +24,7 @@ module ActiveAttr
   # * Object
   # * String
   # * Array
+  # * Hash
   #
   # @since 0.5.0
   module Typecasting
