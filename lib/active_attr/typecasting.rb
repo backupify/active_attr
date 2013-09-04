@@ -27,6 +27,20 @@ module ActiveAttr
   #
   # @since 0.5.0
   module Typecasting
+    # @private
+    TYPECASTER_MAP = {
+      BigDecimal => BigDecimalTypecaster,
+      Boolean    => BooleanTypecaster,
+      Date       => DateTypecaster,
+      DateTime   => DateTimeTypecaster,
+      Float      => FloatTypecaster,
+      Integer    => IntegerTypecaster,
+      Object     => ObjectTypecaster,
+      String     => StringTypecaster,
+      Array      => ArrayTypecaster,
+      Hash       => HashTypecaster
+    }.freeze
+
     # Typecasts a value using a Class
     #
     # @param [#call] typecaster The typecaster to use for typecasting
@@ -50,19 +64,7 @@ module ActiveAttr
     #
     # @since 0.6.0
     def typecaster_for(type)
-      typecaster = {
-        BigDecimal => BigDecimalTypecaster,
-        Boolean    => BooleanTypecaster,
-        Date       => DateTypecaster,
-        DateTime   => DateTimeTypecaster,
-        Float      => FloatTypecaster,
-        Integer    => IntegerTypecaster,
-        Object     => ObjectTypecaster,
-        String     => StringTypecaster,
-        Array      => ArrayTypecaster,
-        Hash       => HashTypecaster
-      }[type]
-
+      typecaster = TYPECASTER_MAP[type]
       typecaster.new if typecaster
     end
   end
