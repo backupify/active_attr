@@ -1,5 +1,3 @@
-require 'json'
-
 module ActiveAttr
   module Typecasting
     # Typecasts an Object to a Hash
@@ -16,7 +14,7 @@ module ActiveAttr
       #
       # @since 0.5.0
       def call(value)
-        value = JSON::parse(value) if value.is_a? String
+        value = ActiveSupport::JSON.decode(value) if value.is_a? String
         value.is_a?(Hash) ? value : {}
       end
     end
